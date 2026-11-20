@@ -30,4 +30,12 @@ public class LiveLinksTest {
     public void emptyMeansNoRow() {
         assertTrue(LiveLinks.parse(new String[0]).isEmpty());
     }
+
+    @Test
+    public void chipTextIsWhichEverOfBlackOrWhiteReadsBetter() {
+        assertEquals(0xFF000000, LiveLinks.textOn(0xFFFFD100));   // SBS yellow
+        assertEquals(0xFF000000, LiveLinks.textOn(0xFF2DBDB6));   // iview teal
+        assertEquals(0xFFFFFFFF, LiveLinks.textOn(0xFF1A2B5C));   // navy
+        assertEquals(0xFFFFFFFF, LiveLinks.textOn(0xFF000000));
+    }
 }

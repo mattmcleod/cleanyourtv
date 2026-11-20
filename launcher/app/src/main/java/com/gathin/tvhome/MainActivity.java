@@ -2332,7 +2332,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 Intent i = ContinueWatching.intentFor(MainActivity.this, item);
                 if (i != null) openOrLaunch(i, item.pkg);
             }
-        }, getString(R.string.continue_watching));
+        }, getString(R.string.continue_watching), false);
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         continueRow.setSideInset((int) (56 * density));
@@ -2461,7 +2461,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     // ---- Live links (config.xml live_links) --------------------------------------------------------
 
     private float liveRowTop(float dockTop) {
-        return dockTop - ContinueRow.ROW_H_DP * density;   // the cards' zoom room is the gap
+        return dockTop - (ContinueRow.CHIP_ROW_H_DP + 12) * density;   // 12dp clear of the dock's focus ring
     }
 
     /** Off while live_links is empty, and only with a dock row (not single_row). */
@@ -2491,7 +2491,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                 openOrLaunch(new Intent(Intent.ACTION_VIEW, Uri.parse(item.intentUri)).setPackage(item.pkg)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), item.pkg);
             }
-        }, getString(R.string.live_now));
+        }, getString(R.string.live_now), true);
         liveRow.setItems(links);
         liveRow.setSideInset((int) (56 * density));
         root.addView(liveRow, root.indexOfChild(glass), new FrameLayout.LayoutParams(

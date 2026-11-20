@@ -49,6 +49,8 @@ final class ContinueRow extends LinearLayout {
     static final int CARD_W_DP = 160, CARD_H_DP = 90;
     /** Caption, its gap, the cards' zoom room above and below, and a card. */
     static final int ROW_H_DP = 13 + 6 + 12 + CARD_H_DP + 12;
+    /** The same with chips (live_links): a coloured button with the name, in the app's own colour. */
+    static final int CHIP_H_DP = 48, CHIP_ROW_H_DP = 13 + 6 + 12 + CHIP_H_DP + 12;
     private static final float FOCUS_SCALE = 1.08f;
 
     private final Host host;
@@ -64,8 +66,11 @@ final class ContinueRow extends LinearLayout {
     private boolean focusRequested;
     private boolean fits = true;   // false: the screen has no room between the clock and the dock's title
 
-    ContinueRow(Context context, Host host, String caption) {
+    private final boolean chips;
+
+    ContinueRow(Context context, Host host, String caption, boolean chips) {
         super(context);
+        this.chips = chips;
         this.host = host;
         this.density = context.getResources().getDisplayMetrics().density;
         setOrientation(VERTICAL);
@@ -172,8 +177,10 @@ final class ContinueRow extends LinearLayout {
         cardViews.clear();
         artViews.clear();
         for (int i = 0; i < items.size(); i++) {
-            View card = card(items.get(i), i);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(CARD_W_DP), dp(CARD_H_DP));
+            View card = chips ? chip(items.get(i), i) : card(items.get(i), i);
+            LinearLayout.LayoutParams lp = chips
+                    ? new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(CHIP_H_DP))
+                    : new LinearLayout.LayoutParams(dp(CARD_W_DP), dp(CARD_H_DP));
             if (i > 0) lp.setMarginStart(dp(18));
             cards.addView(card, lp);
             cardViews.add(card);
@@ -311,6 +318,31 @@ final class ContinueRow extends LinearLayout {
             });
         }
 
+        wire(card, item, index);
+        return card;
+    }
+
+    /** A coloured button with the app's name: its banner's colour, and black or white text, whichever reads better. */
+    private View chip(ContinueWatching.Item item, int index) {
+        TextView chip = label(item.title, 18, Color.WHITE, R.string.font_medium);
+        chip.setId(View.generateViewId());
+        chip.setFocusable(true);
+        chip.setClickable(true);
+        chip.setGravity(Gravity.CENTER);
+        chip.setPadding(dp(28), 0, dp(28), 0);
+        Drawable banner = banner(item.pkg);
+        int color = banner != null ? AppAdapter.vividColor(banner) : 0xFF444444;
+        chip.setTextColor(LiveLinks.textOn(color));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(color);
+        bg.setCornerRadius(dp(12));
+        chip.setBackground(bg);
+        wire(chip, item, index);
+        return chip;
+    }
+
+    /** Focus ring and zoom, OK, and the row's own Up/Down and end-stops: the same for cards and chips. */
+    private void wire(View card, ContinueWatching.Item item, int index) {
         // The ring is drawn over the card, so it shows on light posters too.
         GradientDrawable ring = new GradientDrawable();
         ring.setCornerRadius(dp(12));
@@ -320,7 +352,9 @@ final class ContinueRow extends LinearLayout {
             v.animate().cancel();
             v.animate().scaleX(focused ? FOCUS_SCALE : 1f).scaleY(focused ? FOCUS_SCALE : 1f).setDuration(150).start();
             v.setElevation(focused ? dp(8) : 0);
-            card.setForeground(focused ? ring : null);
+            // A chip is a TextView, which draws no foreground here: its own background takes the ring instead.
+            if (chips) ((GradientDrawable) v.getBackground()).setStroke(focused ? dp(3) : 0, Color.WHITE);
+            else card.setForeground(focused ? ring : null);
             // A stray focus also lands here; strayFocus has already queued the move back to the dock, which puts
             // the glass and the title back.
             if (focused) {
@@ -343,14 +377,21 @@ final class ContinueRow extends LinearLayout {
                     host.onRowDown();
                     return true;
                 case KeyEvent.KEYCODE_DPAD_LEFT:
-                    return index == 0;                        // the row's start: stay put
-                case KeyEvent.KEYCODE_DPAD_RIGHT:
-                    return index == cardViews.size() - 1;     // the row's end: stay put
+                case KeyEvent.KEYCODE_DPAD_RIGHT: {
+                    // Moved by hand: Android's own search would not leave a chip (live_links). At either end, stay put.
+                    int next = index + (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
+                    if (next >= 0 && next < cardViews.size()) {
+                        v.playSoundEffect(keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
+                                ? SoundEffectConstants.NAVIGATION_RIGHT : SoundEffectConstants.NAVIGATION_LEFT);
+                        focusRequested = true;
+                        cardViews.get(next).requestFocus();
+                    }
+                    return true;
+                }
                 default:
                     return false;
             }
         });
-        return card;
     }
 
     private TextView label(String s, int sp, int color, int font) {

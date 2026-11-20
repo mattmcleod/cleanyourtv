@@ -23,4 +23,16 @@ final class LiveLinks {
         }
         return items;
     }
+
+    /** Black or white, whichever contrasts more with this colour (WCAG relative luminance). */
+    static int textOn(int argb) {
+        double l = 0.2126 * channel(argb >> 16) + 0.7152 * channel(argb >> 8) + 0.0722 * channel(argb);
+        // Contrast with black is (l + 0.05) / 0.05, with white 1.05 / (l + 0.05): equal at l = 0.179.
+        return l > 0.179 ? 0xFF000000 : 0xFFFFFFFF;
+    }
+
+    private static double channel(int v) {
+        double c = (v & 0xFF) / 255.0;
+        return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    }
 }
