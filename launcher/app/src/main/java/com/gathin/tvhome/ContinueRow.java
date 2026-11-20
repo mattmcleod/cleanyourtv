@@ -47,9 +47,7 @@ final class ContinueRow extends LinearLayout {
     }
 
     static final int CARD_W_DP = 160, CARD_H_DP = 90;
-    /** Caption, its gap, the cards' zoom room above and below, and a card. */
-    static final int ROW_H_DP = 13 + 6 + 12 + CARD_H_DP + 12;
-    /** The same with chips (live_links): a coloured button with the name, in the app's own colour. */
+    /** A chip row (live_links): caption, its gap, the chips' zoom room above and below, and a chip. */
     static final int CHIP_H_DP = 48, CHIP_ROW_H_DP = 13 + 6 + 12 + CHIP_H_DP + 12;
     private static final float FOCUS_SCALE = 1.08f;
 
@@ -67,6 +65,8 @@ final class ContinueRow extends LinearLayout {
     private boolean fits = true;   // false: the screen has no room between the clock and the dock's title
 
     private final boolean chips;
+    /** setCardGeometry: the dock tiles' size and gap in px; 0 until the dock is laid out. */
+    private int cardW, cardH, cardGap, cardsLeft;
 
     ContinueRow(Context context, Host host, String caption, boolean chips) {
         super(context);
@@ -120,10 +120,36 @@ final class ContinueRow extends LinearLayout {
         addView(scroller, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
+    int cardHeightPx() {
+        return cardH > 0 ? cardH : dp(CARD_H_DP);
+    }
+
+    /** Cards this size and this far apart, the first one's left edge at left (root px): the dock tiles'. */
+    void setCardGeometry(int w, int h, int gap, int left) {
+        if (w == cardW && h == cardH && gap == cardGap && left == cardsLeft) return;
+        cardW = w;
+        cardH = h;
+        cardGap = gap;
+        cardsLeft = left;
+        for (int i = 0; i < cardViews.size(); i++) {
+            LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) cardViews.get(i).getLayoutParams();
+            lp.width = w;
+            lp.height = h;
+            if (i > 0) lp.setMarginStart(gap);
+        }
+        setSideInset(left - dp(12));   // the cards' own 12dp of zoom room
+        cards.requestLayout();
+    }
+
     /** The row spans the screen so cards scroll out through both margins instead of being cut at the left one. */
     void setSideInset(int inset) {
-        ((LayoutParams) title.getLayoutParams()).setMarginStart(inset + dp(12));
-        title.requestLayout();
+        if (scroller.getPaddingLeft() == inset && scroller.getPaddingRight() == inset) return;   // set from layout passes
+        // leftMargin too: a start margin is resolved once, so a later change to it alone was not drawn. The launcher
+        // lays out left to right (no supportsRtl).
+        LayoutParams tlp = (LayoutParams) title.getLayoutParams();
+        tlp.setMarginStart(inset + dp(12));
+        tlp.leftMargin = inset + dp(12);
+        post(title::requestLayout);   // a request made during a layout pass would be dropped
         scroller.setPadding(inset, 0, inset, 0);
     }
 
@@ -180,8 +206,8 @@ final class ContinueRow extends LinearLayout {
             View card = chips ? chip(items.get(i), i) : card(items.get(i), i);
             LinearLayout.LayoutParams lp = chips
                     ? new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(CHIP_H_DP))
-                    : new LinearLayout.LayoutParams(dp(CARD_W_DP), dp(CARD_H_DP));
-            if (i > 0) lp.setMarginStart(dp(18));
+                    : new LinearLayout.LayoutParams(cardW > 0 ? cardW : dp(CARD_W_DP), cardHeightPx());
+            if (i > 0) lp.setMarginStart(!chips && cardGap > 0 ? cardGap : dp(18));
             cards.addView(card, lp);
             cardViews.add(card);
         }

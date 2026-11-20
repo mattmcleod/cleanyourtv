@@ -2350,11 +2350,26 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             root.offsetDescendantRectToMyCoords(grid, g);
             // The dock card's top, which showHero measures from: DockDecoration's 6dp and item_app.xml's 8dp padding.
             float dockTop = g.top + grid.getPaddingTop() + (6 + 8) * density;
-            float rowBottom = y + (13 + 6 + 12 + ContinueRow.CARD_H_DP + 12) * density;
+            matchDockTiles();
+            float rowBottom = y + (13 + 6 + 12 + 12) * density + continueRow.cardHeightPx();
             float heroTop = liveRow != null && liveRow.hasItems() ? liveRowTop(dockTop)
                     : dockTop - 40 * density - hero.getHeight();
             continueRow.setFits(rowBottom <= heroTop);
         });
+    }
+
+    /** The cards take the dock tiles' size, spacing and left edge, so four sit above the four dock apps. */
+    private void matchDockTiles() {
+        RecyclerView.ViewHolder first = grid.findViewHolderForAdapterPosition(0);
+        RecyclerView.ViewHolder second = grid.findViewHolderForAdapterPosition(1);
+        if (first == null || second == null) return;   // scrolled away: keep the last size
+        View c0 = first.itemView.findViewById(R.id.card), c1 = second.itemView.findViewById(R.id.card);
+        if (c0 == null || c1 == null || c0.getWidth() == 0) return;
+        Rect r0 = new Rect(0, 0, c0.getWidth(), c0.getHeight()), r1 = new Rect(0, 0, c1.getWidth(), c1.getHeight());
+        root.offsetDescendantRectToMyCoords(c0, r0);
+        root.offsetDescendantRectToMyCoords(c1, r1);
+        continueRow.setCardGeometry(r0.width(), r0.height(), r1.left - r0.right, r0.left);
+        if (liveRow != null) liveRow.setSideInset(r0.left - Math.round(12 * density));   // the same left edge
     }
 
     private boolean inTopButtons(View view) {
