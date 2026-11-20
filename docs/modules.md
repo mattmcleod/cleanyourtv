@@ -167,3 +167,18 @@ while the launcher stays offline.
    addresses, images.
 
 The [TV Posters](../addons/README.md) add-on implements this.
+
+## Weather in the top bar (com.gathin.tvhome.weather)
+
+With `top_weather` on, the launcher hides the top bar's buttons and shows the weather in their place, read from an
+app that does the fetching, so the launcher stays offline.
+
+1. Hold the `com.gathin.tvhome.weather` authority with an exported provider, signed with the same key as the
+   launcher; the launcher ignores the authority when the keys differ.
+2. Answer a query on `content://com.gathin.tvhome.weather/today` with one row of strings: `temp` (whole degrees
+   now), `icon` (BoM's `forecast_icon_code`), `max`, `min`, `rain` (as shown, e.g. `80%`) and `place`. Leave a
+   value empty when you don't have it; an empty cursor hides the corner. The launcher asks when Home appears and
+   every 10 minutes while it stays on screen, from a background thread, so answer from a cache.
+3. Refuse callers that are not signed like you.
+
+The [BoM Weather](../addons/bom-weather/) add-on implements this.

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Your place, from the Bureau of Meteorology's published feeds (README.md, "Choose your place"). All three
+         empty (the default): the add-on fetches nothing and the launcher shows no weather. -->
+
+    <!-- The nearest station's observations, e.g. https://www.bom.gov.au/fwo/IDV60901/IDV60901.95936.json -->
+    <string name="observations_url" translatable="false"></string>
+    <!-- The state's town forecasts, e.g. https://www.bom.gov.au/fwo/IDV10753.xml -->
+    <string name="forecast_url" translatable="false"></string>
+    <!-- Your town's area code in that file, e.g. VIC_PT042 (Melbourne) -->
+    <string name="forecast_aac" translatable="false"></string>
+</resources>
