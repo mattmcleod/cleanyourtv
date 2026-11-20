@@ -109,6 +109,10 @@ A new key needs one there in the same pull request.
 | `columns` | 1 to 8 | Tiles per row; tiles shrink to fit from 5 up |
 | `rows_below_dock` | 0 to 3 | Grid rows left visible under the dock; tiles shrink if the dock, its title and that many rows would not fit the screen height |
 | `dock_title` | bool | The focused dock app's name in large type above the dock (`true`); `false` keeps only the glow |
+| `continue_watching` | bool, `config.xml` only | A Continue watching row above the dock from the system's Watch Next table, newest first, last 30 days; needs `READ_TV_LISTINGS`, which `build-and-install.sh` grants, and the TV Posters add-on for web posters. Off by default. Not read from a theme |
+| `live_links` | list of `Title\|package\|uri`, `config.xml` only | A row of coloured buttons just above the dock, in the dock title's place, each opening an app's live stream by deep link; each button takes its app's banner colour. Empty by default. Not read from a theme |
+| `more_arrow` | bool, `config.xml` only | The dock 32dp lower, the rows under it hidden while the dock has focus, and a down chevron at the bottom of the screen. Off by default. Not read from a theme |
+| `top_weather` | bool, `config.xml` only | The Bureau of Meteorology's weather where the top bar's buttons were, read from the BoM Weather add-on with a place set; the remote's Input and Settings keys still work. Off by default. Not read from a theme |
 | `dock_row` | bool | The dock as its own row with a band (`true`); `false` makes the dock apps the first tiles of one plain grid |
 | `reorder_button` | bool | A reorder button in the top bar (`false` by default); reordering is always in the Settings button's long-press menu |
 | `show_network_pill` | bool | The Wi-Fi/Ethernet pill in the top bar (`true` by default); `false` hides it |
@@ -135,6 +139,7 @@ A new key needs one there in the same pull request.
 | `shamsi_date` | bool | Show the Solar Hijri date above the Gregorian one |
 | `lunar_date` | bool | Show the lunisolar date under the Gregorian one, e.g. `LUNAR 13/9 · YEAR OF THE HORSE`, or `13/9 ÂM LỊCH · BÍNH NGỌ` in Vietnamese; a leap month is marked. Off by default |
 | `lunar_utc_offset` | 0 to 14 | Hours east of UTC the lunar calendar is computed for: `7` is the Vietnamese calendar, `8` the Chinese one, `9` the Korean one; they differ by a day now and then (and by a month in 1985). Unset: 7 when the TV is in Vietnamese, 9 in Korean, 8 otherwise |
+| `date_baseline` | bool, `config.xml` only | The date on the AM/PM's baseline instead of a little below it; no effect with `date_below_clock` or a 24-hour clock. Off by default. Not read from a theme |
 | `date_below_clock` | bool | The date (with the Shamsi and lunar lines) on its own line under the clock instead of beside it, for a top bar whose pills leave the date too little room (`false` by default) |
 | `locale` | string | The language the launcher shows itself in, as a language tag (`"vi"`, `"pt-BR"`, `"ar-EG-u-nu-latn"` for Arabic with Western digits), instead of the TV's: for firmware with no menu entry for a language the launcher speaks (a China-market Xiaomi offers Chinese and English only). Empty by default, which follows the TV |
 | `greeting_name` | string | A name after the greeting, e.g. `"Mr. Trịnh"` for GOOD MORNING, MR. TRỊNH; empty for the greeting alone |
