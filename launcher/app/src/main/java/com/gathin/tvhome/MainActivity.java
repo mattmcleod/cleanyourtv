@@ -13,6 +13,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.ResolveInfo;
 import android.content.pm.ChangedPackages;
@@ -204,6 +205,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private ContinueRow continueRow;
     /** config.xml live_links: fixed deep-link cards just above the dock, in the dock title's place. */
     private ContinueRow liveRow;
+    /** config.xml top_weather: the BoM Weather add-on's reading where the top bar's buttons were. */
+    private TextView weatherNow, weatherDetails;
+    private final Runnable reloadWeather = this::loadWeather;
     /** config.xml more_arrow (MoreBelow): the chevron under the dock, null when off. */
     private View moreArrowView;
     /** Where the dock row ends in the grid at rest (its padding line plus the row): the clip for more_arrow. */
@@ -950,6 +954,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnReorder.setOnKeyListener(pillKeys);
         btnLibraryTop.setOnKeyListener(pillKeys);
         for (View button : topAppButtons) button.setOnKeyListener(pillKeys);
+        setUpTopWeather();
         if (advancedEffects) {
             List<View> pills = new ArrayList<>(Arrays.asList(btnInputs, btnWifi, btnVpn, btnReorder, btnLibraryTop, btnSettings));
             pills.addAll(topAppButtons);
@@ -1136,6 +1141,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         promptsPaused = false;
         loadContinueRow();
         watchWatchNext(true);
+        loadWeather();
         if (grid.getAdapter() == null) grid.setAdapter(adapter);   // dropped by onTrimMemory
         switch (tileRefresh.onResume(packagesChangedSinceRebuild())) {
             case REBUILD:
@@ -1343,6 +1349,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         RemoteKeys.release(this);
         cancelHoldOk();
         watchWatchNext(false);
+        handler.removeCallbacks(reloadWeather);
         root.removeCallbacks(showIdleClock);
         endReorder();   // Home or another app while reordering keeps the order so far
         wallpaperPlayer.stop();
@@ -2364,6 +2371,90 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             Log.w(ContinueWatching.TAG, "could not open " + pkg + ": " + e);
             Intent fallback = getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
             if (fallback != null) startActivity(fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        }
+    }
+
+    // ---- Weather (config.xml top_weather) ---------------------------------------------------------
+
+    /** The buttons stay in the layout, invisible and unfocusable, so nothing else moves; Up from the top row stays
+     *  put, and the remote's Input and Settings keys still work. */
+    private void setUpTopWeather() {
+        if (!getResources().getBoolean(R.bool.top_weather)) return;
+        ViewGroup bar = findViewById(R.id.topButtons);
+        bar.setVisibility(View.INVISIBLE);
+        // A direct requestFocus still lands on a child of an invisible bar, so Up from the rows would vanish there.
+        for (int i = 0; i < bar.getChildCount(); i++) bar.getChildAt(i).setFocusable(false);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.END);   // the temperature line; the details line right-aligns its own text
+        box.setFocusable(false);
+        weatherNow = new TextView(this);
+        weatherNow.setTextSize(TypedValue.COMPLEX_UNIT_SP, 40);
+        weatherNow.setTextColor(Color.WHITE);
+        weatherNow.setTypeface(UiFont.get(this, R.string.font_light));
+        weatherNow.setIncludeFontPadding(false);
+        weatherDetails = new TextView(this);
+        weatherDetails.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        weatherDetails.setTextColor(0xB3FFFFFF);
+        weatherDetails.setTypeface(UiFont.get(this, R.string.font_regular));
+        weatherDetails.setPadding(0, (int) (4 * density), 0, 0);
+        weatherDetails.setGravity(Gravity.END);
+        box.addView(weatherNow);
+        box.addView(weatherDetails, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        box.setVisibility(View.GONE);
+        RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.addRule(RelativeLayout.ALIGN_PARENT_END);
+        lp.addRule(RelativeLayout.ALIGN_BOTTOM, R.id.leftBlock);
+        lp.bottomMargin = ((ViewGroup.MarginLayoutParams) bar.getLayoutParams()).bottomMargin;
+        ((ViewGroup) bar.getParent()).addView(box, lp);
+    }
+
+    /** On resume and every RELOAD_MS while Home is on screen: one local provider query, off the main thread. */
+    private void loadWeather() {
+        if (weatherNow == null) return;
+        handler.removeCallbacks(reloadWeather);
+        Context app = getApplicationContext();
+        new Thread(() -> {
+            String[] row = readWeather(app);
+            handler.post(() -> {
+                if (weatherNow == null || isFinishing() || isDestroyed()) return;
+                View box = (View) weatherNow.getParent();
+                if (row == null) {
+                    box.setVisibility(View.GONE);
+                } else {
+                    String glyph = TopWeather.glyph(row[1]);
+                    weatherNow.setText(row[0].isEmpty() ? glyph : (glyph.isEmpty() ? "" : glyph + "  ") + row[0] + "\u00B0");
+                    weatherDetails.setText(TopWeather.details(
+                            row[2].isEmpty() ? "" : getString(R.string.weather_max, row[2]),
+                            row[3].isEmpty() ? "" : getString(R.string.weather_min, row[3]),
+                            row[4].isEmpty() ? "" : getString(R.string.weather_rain, row[4])));
+                    box.setContentDescription(row[5] + " " + weatherNow.getText() + " " + weatherDetails.getText());
+                    box.setVisibility(View.VISIBLE);
+                }
+                if (resumed) handler.postDelayed(reloadWeather, TopWeather.RELOAD_MS);
+            });
+        }, "top-weather").start();
+    }
+
+    /** temp, icon, max, min, rain, place; null without the add-on, one signed differently, or no reading yet. */
+    private static String[] readWeather(Context context) {
+        PackageManager pm = context.getPackageManager();
+        android.content.pm.ProviderInfo info = pm.resolveContentProvider(TopWeather.AUTHORITY, 0);
+        if (info == null || pm.checkSignatures(info.packageName, context.getPackageName()) != PackageManager.SIGNATURE_MATCH) {
+            return null;
+        }
+        String[] cols = {"temp", "icon", "max", "min", "rain", "place"};
+        try (Cursor c = context.getContentResolver().query(
+                Uri.parse("content://" + TopWeather.AUTHORITY + "/today"), cols, null, null, null)) {
+            if (c == null || !c.moveToFirst()) return null;
+            String[] row = new String[cols.length];
+            for (int i = 0; i < cols.length; i++) row[i] = c.isNull(i) ? "" : c.getString(i);
+            return row;
+        } catch (RuntimeException e) {
+            Log.w("TopWeather", "no weather: " + e);
+            return null;
         }
     }
 

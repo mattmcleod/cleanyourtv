@@ -160,5 +160,8 @@
     <string name="clock_format_24">24-hour</string>
     <string name="continue_watching">Continue watching</string>
     <string name="live_now">Live now</string>
+    <string name="weather_max">Max %s°</string>
+    <string name="weather_min">Min %s°</string>
+    <string name="weather_rain">%s rain</string>
     <string name="more_apps_below">More apps below</string>
 </resources>

@@ -490,6 +490,12 @@
          Hidden on a screen with no room above the dock. -->
     <bool name="continue_watching">false</bool>
 
+    <!-- The weather from the Bureau of Meteorology where the top bar's buttons were (Inputs, Wi-Fi, Settings): now,
+         and today's max, min and chance of rain. Needs the BoM Weather add-on with a place set
+         and signed like the launcher; the launcher itself makes no network request. The remote's Input and Settings
+         keys keep working. Off by default. -->
+    <bool name="top_weather">false</bool>
+
     <!-- A row of fixed cards just above the dock, in place of the dock's title, each opening one app's live stream
          with a deep link: "Title|package|uri". Empty (the default) means no row. Example, ABC iview's ABC TV:
          ABC TV|au.net.abc.iview|iview://video/LS1807V001S00?fromChannel=WatchLive -->

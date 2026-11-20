@@ -117,4 +117,7 @@
     <string name="clock_format_24">24-uurs</string>
     <string name="continue_watching">Verder kijken</string>
     <string name="live_now">Nu live</string>
+    <string name="weather_max">Max %s°</string>
+    <string name="weather_min">Min %s°</string>
+    <string name="weather_rain">%s regen</string>
 </resources>
