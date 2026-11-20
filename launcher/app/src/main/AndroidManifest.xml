@@ -9,6 +9,9 @@
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!-- The Continue watching row (config.xml continue_watching): reads the Watch Next table. A runtime
+         permission, granted by build-and-install with pm grant rather than asked for on screen. -->
+    <uses-permission android:name="android.permission.READ_TV_LISTINGS" />
     <!-- Needed since Android 10 to read the Wi-Fi network name for the network pill. Never requested at
          runtime: build-and-install grants it with pm grant, so lint's Android 12 "ask for COARSE with
          FINE" rule does not apply here. -->
@@ -68,6 +71,8 @@
         <!-- Coocaa OS sources for the Inputs menu (coocaa_sources); see CoocaaSources. -->
         <provider android:authorities="com.skyworth.tv.provider" />
         <provider android:authorities="com.skyworth.tv.sdk.provider" />
+        <!-- Continue watching: an optional companion that fetches https posters (docs/watch-next.md). -->
+        <provider android:authorities="com.gathin.tvhome.posters" />
     </queries>
 
     <application

@@ -8,6 +8,7 @@ import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.database.ContentObserver;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.IntentFilter;
@@ -52,11 +53,13 @@ import android.text.Spanned;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.SoundEffectConstants;
+import android.view.ViewParent;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.view.Window;
@@ -197,6 +200,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private boolean lunar;
     private int lunarOffset;
     private TextView stats;
+    /** config.xml continue_watching: the Watch Next row above the dock; null when off. */
+    private ContinueRow continueRow;
     private List<RaceWeekend.Race> raceCalendar;
     private View racePanel;
     private TextView raceKicker, raceHeadline, raceSessions;
@@ -363,6 +368,15 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private RecyclerView.OnScrollListener pendingFocusScroll;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Runnable reloadContinueRow = this::loadContinueRow;
+    // Prime Video writes its row a minute or two after playback stops, usually after Home is already back.
+    private final ContentObserver watchNextObserver = new ContentObserver(handler) {
+        @Override
+        public void onChange(boolean selfChange) {
+            handler.removeCallbacks(reloadContinueRow);
+            handler.postDelayed(reloadContinueRow, 1000);
+        }
+    };
     /** Refreshes the network pill when the connection changes: at boot Wi-Fi often connects after Home is shown. */
     private final ConnectivityManager.NetworkCallback networkCallback = new ConnectivityManager.NetworkCallback() {
         @Override
@@ -702,6 +716,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Order savedOrder = Order.load(Order.file(this));
         adapter.setSavedOrder(Order.ranks(savedOrder, dockApps), Order.docked(savedOrder, dockApps));
         grid.setAdapter(adapter);
+        setUpContinueRow();
 
         // tvOS layout: push the dock row towards the bottom of the screen, leaving room for
         // rows_below_dock grid rows under it; the rest of the grid stays below until you press Down.
@@ -1105,6 +1120,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
         restartIdleClock();
         promptsPaused = false;
+        loadContinueRow();
+        watchWatchNext(true);
         if (grid.getAdapter() == null) grid.setAdapter(adapter);   // dropped by onTrimMemory
         switch (tileRefresh.onResume(packagesChangedSinceRebuild())) {
             case REBUILD:
@@ -1311,6 +1328,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         // Only Home's own share is dropped: a key service that saw the same DOWN keeps its hold.
         RemoteKeys.release(this);
         cancelHoldOk();
+        watchWatchNext(false);
         root.removeCallbacks(showIdleClock);
         endReorder();   // Home or another app while reordering keeps the order so far
         wallpaperPlayer.stop();
@@ -1817,6 +1835,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     public void onTileFocused(int position, View card) {
         lastFocused = position;
+        if (continueRow != null) {
+            continueRow.setWanted(position < COLUMNS);
+            updateTopBarDown();
+        }
         lastFocusedKey = adapter.keyAt(position);
         // Focus restored before the first layout (cold start): the tile has no size yet, and the glass
         // would be sized to 2*pad. Run again once the tile is laid out.
@@ -2261,6 +2283,112 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         else glass.setAlpha(0f);
     }
 
+    // ---- Continue watching (config.xml continue_watching) ------------------------------------------
+
+    /** Off unless configured, and only with a dock row that has the room above it (not single_row). */
+    private void setUpContinueRow() {
+        if (!getResources().getBoolean(R.bool.continue_watching) || !dockRow || singleRow) return;
+        continueRow = new ContinueRow(this, new ContinueRow.Host() {
+            @Override public void onRowFocused() {
+                hideGlass();
+                hideHero();
+            }
+
+            @Override public void onRowUp() {
+                firstTopButton().requestFocus();
+            }
+
+            @Override public void onRowDown() {
+                focusTile(lastFocused < COLUMNS ? lastFocused : 0);
+            }
+
+            @Override public boolean inTopBar(View view) {
+                ViewGroup bar = findViewById(R.id.topButtons);
+                for (ViewParent p = view.getParent(); p != null; p = p.getParent()) if (p == bar) return true;
+                return false;
+            }
+
+            @Override public void onRowOpen(ContinueWatching.Item item) {
+                Intent i = ContinueWatching.intentFor(MainActivity.this, item);
+                if (i == null) return;
+                try {
+                    startActivity(i);
+                } catch (RuntimeException e) {
+                    // ActivityNotFound, or a SecurityException for an intent the app did not export.
+                    Log.w(ContinueWatching.TAG, "could not open " + item.pkg + ": " + e);
+                    Intent fallback = getPackageManager().getLeanbackLaunchIntentForPackage(item.pkg);
+                    if (fallback != null) startActivity(fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                }
+            }
+        }, getString(R.string.continue_watching));
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        continueRow.setSideInset((int) (56 * density));
+        root.addView(continueRow, root.indexOfChild(glass), lp);
+        // Under the clock block, and only where it clears the dock's title: on a screen too short for both, the
+        // row stays hidden rather than drawing over the title.
+        root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            View anchor = stats.getVisibility() == View.VISIBLE ? stats : findViewById(R.id.leftBlock);
+            Rect a = new Rect(0, 0, anchor.getWidth(), anchor.getHeight());
+            root.offsetDescendantRectToMyCoords(anchor, a);
+            float y = a.bottom + 8 * density;
+            if (continueRow.getY() != y) continueRow.setY(y);
+            Rect g = new Rect(0, 0, grid.getWidth(), grid.getHeight());
+            root.offsetDescendantRectToMyCoords(grid, g);
+            // The dock card's top, which showHero measures from: DockDecoration's 6dp and item_app.xml's 8dp padding.
+            float dockTop = g.top + grid.getPaddingTop() + (6 + 8) * density;
+            float rowBottom = y + (13 + 6 + 12 + ContinueRow.CARD_H_DP + 12) * density;
+            float heroTop = dockTop - 40 * density - hero.getHeight();
+            continueRow.setFits(rowBottom <= heroTop);
+        });
+    }
+
+    private void watchWatchNext(boolean on) {
+        if (continueRow == null) return;
+        handler.removeCallbacks(reloadContinueRow);
+        try {
+            if (on) getContentResolver().registerContentObserver(TvContract.WatchNextPrograms.CONTENT_URI, true, watchNextObserver);
+            else getContentResolver().unregisterContentObserver(watchNextObserver);
+        } catch (RuntimeException e) {
+            Log.w(ContinueWatching.TAG, "Watch Next changes not observable: " + e);
+        }
+    }
+
+    /** On resume and when the Watch Next table changes, off the main thread: a provider query and a few local
+     *  posters. No polling. */
+    private void loadContinueRow() {
+        if (continueRow == null) return;
+        Context app = getApplicationContext();
+        new Thread(() -> {
+            List<ContinueWatching.Item> items = ContinueWatching.load(app);
+            handler.post(() -> {
+                if (continueRow == null || isFinishing() || isDestroyed()) return;
+                continueRow.setItems(items);
+                updateTopBarDown();
+                if (resumed && ContinueWatching.isHolding()) {
+                    handler.removeCallbacks(reloadContinueRow);
+                    handler.postDelayed(reloadContinueRow, ContinueWatching.HOLD_MS);
+                }
+            });
+            // Then the posters, each swapped in as it arrives: the row does not wait for the slowest one.
+            for (ContinueWatching.Item item : items) {
+                if (isFinishing() || isDestroyed()) return;
+                if (ContinueWatching.loadPoster(app, item)) handler.post(() -> {
+                    if (continueRow != null) continueRow.showPoster(item);
+                });
+            }
+        }, "continue-watching").start();
+    }
+
+    /** The top bar's Down goes to the row while it is on screen, to the grid otherwise. */
+    private void updateTopBarDown() {
+        int target = continueRow == null ? View.NO_ID : continueRow.firstCardId();
+        ViewGroup bar = findViewById(R.id.topButtons);
+        for (int i = 0; i < bar.getChildCount(); i++) {
+            bar.getChildAt(i).setNextFocusDownId(target != View.NO_ID ? target : R.id.grid);
+        }
+    }
+
     // ---- optional system stats (config.xml show_stats) --------------------------------------------
 
     /** Background reader. Started only while Home is resumed and show_stats is on. */
@@ -2472,7 +2600,12 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     rtlAppGrid, keyCode == KeyEvent.KEYCODE_DPAD_LEFT);
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            if (position < COLUMNS) return false;          // dock row: let focus move to the top bar
+            if (position < COLUMNS) {                      // dock row: the Continue watching row, else the top bar
+                if (continueRow == null || !continueRow.isShowing()) return false;
+                continueRow.focusCard();
+                grid.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
+                return true;
+            }
             target = position - COLUMNS;
         } else {
             int lastRowStart = ((count - 1) / COLUMNS) * COLUMNS;
@@ -2491,6 +2624,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
 
     @Override public void onLibraryFocused() {
         libraryFocusPending = false;
+        if (continueRow != null) continueRow.setWanted(false);
         hideGlass();
         hideHero();
     }

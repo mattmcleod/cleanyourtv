@@ -482,6 +482,14 @@
          "show_stats": true. Nothing is read, and the clock does not move, while this is false. -->
     <bool name="show_stats">false</bool>
 
+    <!-- A Continue watching row above the dock, from the system's Watch Next table (docs/watch-next.md): one card per
+         show, most recently watched first, rows from the last 30 days. Read each time Home comes back and when the
+         table changes while Home is up, never polled. Needs READ_TV_LISTINGS, which build-and-install grants. Only
+         local posters are drawn; rows whose poster is a web address get the app's own banner, unless the TV Posters
+         add-on (com.gathin.tvhome.posters) is installed to fetch them, so Home itself makes no network request.
+         Hidden on a screen with no room above the dock. -->
+    <bool name="continue_watching">false</bool>
+
     <!-- Each team's next game in the F1 panel's place under the clock, rotating with the theme's F1 weekend: the package
          of an add-on that publishes them (the Game Day add-on: io.github.justinnewman.gameday; contract in docs/modules.md).
          Empty = off: nothing is read or watched. The launcher only reads what the add-on publishes and never goes
