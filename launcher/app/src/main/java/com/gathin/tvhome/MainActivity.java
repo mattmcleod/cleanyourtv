@@ -202,6 +202,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView stats;
     /** config.xml continue_watching: the Watch Next row above the dock; null when off. */
     private ContinueRow continueRow;
+    /** config.xml more_arrow (MoreBelow): the chevron under the dock, null when off. */
+    private View moreArrowView;
+    /** Where the dock row ends in the grid at rest (its padding line plus the row): the clip for more_arrow. */
+    private int dockRestBottom;
     private List<RaceWeekend.Race> raceCalendar;
     private View racePanel;
     private TextView raceKicker, raceHeadline, raceSessions;
@@ -717,6 +721,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         adapter.setSavedOrder(Order.ranks(savedOrder, dockApps), Order.docked(savedOrder, dockApps));
         grid.setAdapter(adapter);
         setUpContinueRow();
+        setUpMoreArrow();
 
         // tvOS layout: push the dock row towards the bottom of the screen, leaving room for
         // rows_below_dock grid rows under it; the rest of the grid stays below until you press Down.
@@ -738,6 +743,11 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (MainActivity.this.dockRow && cfg.dockTitle && rowsBelowDock > 0) want = Math.max(want, (int) (AppAdapter.TITLE_ROOM_DP * density));
             // No dock to push down: the grid starts at the top, with room for the first row's zoom and glass.
             if (!MainActivity.this.dockRow) want = (int) (AppAdapter.TOP_ROOM_DP * density);
+            if (moreArrowView != null) {
+                want += (int) (MoreBelow.DROP_DP * density);
+                dockRestBottom = want + dockRow;
+                grid.post(this::applyMoreBelow);
+            }
             // A single row never shows the names under its tiles (the title above the row names the app), so the
             // 7dp gap and 22dp label item_app.xml keeps for them would only lift the row: sit it that much lower.
             if (singleRow && !cfg.alwaysShowNames) want += (int) (29 * density);
@@ -1839,6 +1849,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             continueRow.setWanted(position < COLUMNS);
             updateTopBarDown();
         }
+        applyMoreBelow();
         lastFocusedKey = adapter.keyAt(position);
         // Focus restored before the first layout (cold start): the tile has no size yet, and the glass
         // would be sized to 2*pad. Run again once the tile is laid out.
@@ -2341,6 +2352,34 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             float heroTop = dockTop - 40 * density - hero.getHeight();
             continueRow.setFits(rowBottom <= heroTop);
         });
+    }
+
+    // ---- More below (config.xml more_arrow) --------------------------------------------------------
+
+    /** Off unless configured, and only with a vertical grid under a dock row. */
+    private void setUpMoreArrow() {
+        if (!getResources().getBoolean(R.bool.more_arrow) || !dockRow || singleRow) return;
+        ImageView arrow = new ImageView(this);
+        arrow.setImageResource(R.drawable.ic_more_below);
+        arrow.setContentDescription(getString(R.string.more_apps_below));
+        arrow.setFocusable(false);
+        arrow.setAlpha(0.7f);
+        arrow.setVisibility(View.GONE);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams((int) (28 * density), (int) (28 * density),
+                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        lp.bottomMargin = (int) (4 * density);
+        root.addView(arrow, lp);
+        moreArrowView = arrow;
+    }
+
+    /** Dock focused: clip the grid at the dock's resting bottom, so no row peeks in (not even mid-scroll), and
+     *  show the chevron. Focus in the grid: no clip, no chevron. */
+    private void applyMoreBelow() {
+        if (moreArrowView == null || dockRestBottom <= 0) return;
+        boolean collapsed = MoreBelow.collapsed(lastFocused, COLUMNS);
+        grid.setClipBounds(collapsed ? new Rect(0, 0, grid.getWidth(), dockRestBottom) : null);
+        moreArrowView.setVisibility(MoreBelow.showArrow(lastFocused, COLUMNS, adapter.appCount())
+                ? View.VISIBLE : View.GONE);
     }
 
     private void watchWatchNext(boolean on) {
