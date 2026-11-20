@@ -490,6 +490,11 @@
          Hidden on a screen with no room above the dock. -->
     <bool name="continue_watching">false</bool>
 
+    <!-- A row of fixed cards just above the dock, in place of the dock's title, each opening one app's live stream
+         with a deep link: "Title|package|uri". Empty (the default) means no row. Example, ABC iview's ABC TV:
+         ABC TV|au.net.abc.iview|iview://video/LS1807V001S00?fromChannel=WatchLive -->
+    <string-array name="live_links" translatable="false" />
+
     <!-- The dock sits 32dp lower, the grid rows under it stay hidden while the dock (or anything above it) has
          focus, and a down chevron at the bottom of the screen shows there is more; Down opens the grid as usual.
          Off by default. -->

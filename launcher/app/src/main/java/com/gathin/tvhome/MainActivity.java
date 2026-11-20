@@ -202,6 +202,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private TextView stats;
     /** config.xml continue_watching: the Watch Next row above the dock; null when off. */
     private ContinueRow continueRow;
+    /** config.xml live_links: fixed deep-link cards just above the dock, in the dock title's place. */
+    private ContinueRow liveRow;
     /** config.xml more_arrow (MoreBelow): the chevron under the dock, null when off. */
     private View moreArrowView;
     /** Where the dock row ends in the grid at rest (its padding line plus the row): the clip for more_arrow. */
@@ -560,7 +562,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         if (cinematic) setUpCinematicShelf(cfg.cinematicScrim);
         // dock_title false: the name above the dock (and the cinematic lines under it) never shows; the glow
         // still follows the dock.
-        if (!cfg.dockTitle) hero.setVisibility(View.GONE);
+        // live_links takes the title's place above the dock.
+        if (!cfg.dockTitle || getResources().getStringArray(R.array.live_links).length > 0) hero.setVisibility(View.GONE);
         greeting = findViewById(R.id.greeting);
         clockBlock = findViewById(R.id.leftBlock);
         clockRefresh = new ClockRefresh(clockBlock);
@@ -720,6 +723,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         Order savedOrder = Order.load(Order.file(this));
         adapter.setSavedOrder(Order.ranks(savedOrder, dockApps), Order.docked(savedOrder, dockApps));
         grid.setAdapter(adapter);
+        setUpLiveRow();
         setUpContinueRow();
         setUpMoreArrow();
 
@@ -1845,10 +1849,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override
     public void onTileFocused(int position, View card) {
         lastFocused = position;
-        if (continueRow != null) {
-            continueRow.setWanted(position < COLUMNS);
-            updateTopBarDown();
-        }
+        if (continueRow != null) continueRow.setWanted(position < COLUMNS);
+        if (liveRow != null) liveRow.setWanted(position < COLUMNS);
+        if (continueRow != null || liveRow != null) updateTopBarDown();
         applyMoreBelow();
         lastFocusedKey = adapter.keyAt(position);
         // Focus restored before the first layout (cold start): the tile has no size yet, and the glass
@@ -2310,26 +2313,17 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             }
 
             @Override public void onRowDown() {
-                focusTile(lastFocused < COLUMNS ? lastFocused : 0);
+                if (liveRow != null && liveRow.isShowing()) liveRow.focusCard();
+                else focusTile(lastFocused < COLUMNS ? lastFocused : 0);
             }
 
             @Override public boolean inTopBar(View view) {
-                ViewGroup bar = findViewById(R.id.topButtons);
-                for (ViewParent p = view.getParent(); p != null; p = p.getParent()) if (p == bar) return true;
-                return false;
+                return inTopButtons(view);
             }
 
             @Override public void onRowOpen(ContinueWatching.Item item) {
                 Intent i = ContinueWatching.intentFor(MainActivity.this, item);
-                if (i == null) return;
-                try {
-                    startActivity(i);
-                } catch (RuntimeException e) {
-                    // ActivityNotFound, or a SecurityException for an intent the app did not export.
-                    Log.w(ContinueWatching.TAG, "could not open " + item.pkg + ": " + e);
-                    Intent fallback = getPackageManager().getLeanbackLaunchIntentForPackage(item.pkg);
-                    if (fallback != null) startActivity(fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-                }
+                if (i != null) openOrLaunch(i, item.pkg);
             }
         }, getString(R.string.continue_watching));
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
@@ -2349,8 +2343,74 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             // The dock card's top, which showHero measures from: DockDecoration's 6dp and item_app.xml's 8dp padding.
             float dockTop = g.top + grid.getPaddingTop() + (6 + 8) * density;
             float rowBottom = y + (13 + 6 + 12 + ContinueRow.CARD_H_DP + 12) * density;
-            float heroTop = dockTop - 40 * density - hero.getHeight();
+            float heroTop = liveRow != null && liveRow.hasItems() ? liveRowTop(dockTop)
+                    : dockTop - 40 * density - hero.getHeight();
             continueRow.setFits(rowBottom <= heroTop);
+        });
+    }
+
+    private boolean inTopButtons(View view) {
+        ViewGroup bar = findViewById(R.id.topButtons);
+        for (ViewParent p = view.getParent(); p != null; p = p.getParent()) if (p == bar) return true;
+        return false;
+    }
+
+    /** The app's own fallback when its deep link is refused: ActivityNotFound, or a SecurityException for an
+     *  intent it did not export. */
+    private void openOrLaunch(Intent i, String pkg) {
+        try {
+            startActivity(i);
+        } catch (RuntimeException e) {
+            Log.w(ContinueWatching.TAG, "could not open " + pkg + ": " + e);
+            Intent fallback = getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
+            if (fallback != null) startActivity(fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        }
+    }
+
+    // ---- Live links (config.xml live_links) --------------------------------------------------------
+
+    private float liveRowTop(float dockTop) {
+        return dockTop - ContinueRow.ROW_H_DP * density;   // the cards' zoom room is the gap
+    }
+
+    /** Off while live_links is empty, and only with a dock row (not single_row). */
+    private void setUpLiveRow() {
+        List<ContinueWatching.Item> links = LiveLinks.parse(getResources().getStringArray(R.array.live_links));
+        if (links.isEmpty() || !dockRow || singleRow) return;
+        liveRow = new ContinueRow(this, new ContinueRow.Host() {
+            @Override public void onRowFocused() {
+                hideGlass();
+                hideHero();
+            }
+
+            @Override public void onRowUp() {
+                if (continueRow != null && continueRow.isShowing()) continueRow.focusCard();
+                else firstTopButton().requestFocus();
+            }
+
+            @Override public void onRowDown() {
+                focusTile(lastFocused < COLUMNS ? lastFocused : 0);
+            }
+
+            @Override public boolean inTopBar(View view) {
+                return inTopButtons(view);
+            }
+
+            @Override public void onRowOpen(ContinueWatching.Item item) {
+                openOrLaunch(new Intent(Intent.ACTION_VIEW, Uri.parse(item.intentUri)).setPackage(item.pkg)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), item.pkg);
+            }
+        }, getString(R.string.live_now));
+        liveRow.setItems(links);
+        liveRow.setSideInset((int) (56 * density));
+        root.addView(liveRow, root.indexOfChild(glass), new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+            Rect g = new Rect(0, 0, grid.getWidth(), grid.getHeight());
+            root.offsetDescendantRectToMyCoords(grid, g);
+            float y = liveRowTop(g.top + grid.getPaddingTop() + (6 + 8) * density);
+            if (liveRow.getY() != y) liveRow.setY(y);
+            liveRow.setFits(y >= 0);
         });
     }
 
@@ -2422,6 +2482,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     /** The top bar's Down goes to the row while it is on screen, to the grid otherwise. */
     private void updateTopBarDown() {
         int target = continueRow == null ? View.NO_ID : continueRow.firstCardId();
+        if (target == View.NO_ID && liveRow != null) target = liveRow.firstCardId();
         ViewGroup bar = findViewById(R.id.topButtons);
         for (int i = 0; i < bar.getChildCount(); i++) {
             bar.getChildAt(i).setNextFocusDownId(target != View.NO_ID ? target : R.id.grid);
@@ -2639,9 +2700,10 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
                     rtlAppGrid, keyCode == KeyEvent.KEYCODE_DPAD_LEFT);
         }
         if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-            if (position < COLUMNS) {                      // dock row: the Continue watching row, else the top bar
-                if (continueRow == null || !continueRow.isShowing()) return false;
-                continueRow.focusCard();
+            if (position < COLUMNS) {                      // dock row: the Live row, Continue watching, else the top bar
+                ContinueRow above = liveRow != null && liveRow.isShowing() ? liveRow : continueRow;
+                if (above == null || !above.isShowing()) return false;
+                above.focusCard();
                 grid.playSoundEffect(SoundEffectConstants.NAVIGATION_UP);
                 return true;
             }
@@ -2664,6 +2726,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     @Override public void onLibraryFocused() {
         libraryFocusPending = false;
         if (continueRow != null) continueRow.setWanted(false);
+        if (liveRow != null) liveRow.setWanted(false);
         hideGlass();
         hideHero();
     }

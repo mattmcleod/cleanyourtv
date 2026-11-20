@@ -47,6 +47,8 @@ final class ContinueRow extends LinearLayout {
     }
 
     static final int CARD_W_DP = 160, CARD_H_DP = 90;
+    /** Caption, its gap, the cards' zoom room above and below, and a card. */
+    static final int ROW_H_DP = 13 + 6 + 12 + CARD_H_DP + 12;
     private static final float FOCUS_SCALE = 1.08f;
 
     private final Host host;
