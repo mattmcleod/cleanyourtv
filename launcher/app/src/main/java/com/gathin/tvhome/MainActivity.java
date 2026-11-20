@@ -955,6 +955,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnLibraryTop.setOnKeyListener(pillKeys);
         for (View button : topAppButtons) button.setOnKeyListener(pillKeys);
         setUpTopWeather();
+        alignDateToAmPm();
         if (advancedEffects) {
             List<View> pills = new ArrayList<>(Arrays.asList(btnInputs, btnWifi, btnVpn, btnReorder, btnLibraryTop, btnSettings));
             pills.addAll(topAppButtons);
@@ -2372,6 +2373,22 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             Intent fallback = getPackageManager().getLeanbackLaunchIntentForPackage(pkg);
             if (fallback != null) startActivity(fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         }
+    }
+
+    // ---- config.xml date_baseline -----------------------------------------------------------------
+
+    /** The date column moved so the date's baseline is the AM/PM's; off with date_below_clock, which moves it. */
+    private void alignDateToAmPm() {
+        if (!getResources().getBoolean(R.bool.date_baseline)) return;
+        TextView ampm = findViewById(R.id.ampm), date = findViewById(R.id.date);
+        View box = (View) date.getParent();
+        View.OnLayoutChangeListener align = (v, l, t, r, b, ol, ot, or, ob) -> {
+            if (box.getParent() != ampm.getParent() || ampm.getText().length() == 0) return;
+            float shift = ampm.getTop() + ampm.getBaseline() - (box.getTop() + date.getTop() + date.getBaseline());
+            if (box.getTranslationY() != shift) box.setTranslationY(shift);
+        };
+        ampm.addOnLayoutChangeListener(align);
+        box.addOnLayoutChangeListener(align);
     }
 
     // ---- Weather (config.xml top_weather) ---------------------------------------------------------
