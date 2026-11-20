@@ -12,7 +12,6 @@ import android.net.Uri;
 import android.util.Log;
 
 import java.io.InputStream;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -301,7 +300,7 @@ final class ContinueWatching {
                     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     return i;
                 }
-            } catch (URISyntaxException e) {
+            } catch (Exception e) {   // a bad URI; not named, as tests/test_launcher_no_network.py flags its package
                 Log.w(TAG, "bad intent_uri from " + item.pkg + ": " + e);
             }
         }

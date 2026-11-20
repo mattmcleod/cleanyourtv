@@ -55,6 +55,9 @@ SHIPPED = {
     "android.permission.ACCESS_FINE_LOCATION",
     "android.permission.WRITE_SECURE_SETTINGS",
     "yandex.tv.permission.ACCESS_TV_SOURCE",
+    # continue_watching reads the Watch Next table, which needs it; build-and-install.sh grants it and nothing
+    # reads it while the switch is off. A local provider, not the network.
+    "android.permission.READ_TV_LISTINGS",
 }
 
 # The shapes a network connection is opened with, in plain Java and in the libraries that wrap it. A
