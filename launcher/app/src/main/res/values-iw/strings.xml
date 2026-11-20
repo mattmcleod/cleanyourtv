@@ -153,6 +153,7 @@
     <string name="clock_format_12">12 שעות</string>
     <string name="clock_format_24">24 שעות</string>
     <string name="continue_watching">המשך צפייה</string>
+    <string name="more_apps_below">עוד אפליקציות למטה</string>
     <string name="live_now">שידור חי</string>
     <string name="weather_max">מקס׳ %s°</string>
     <string name="weather_min">מינ׳ %s°</string>
