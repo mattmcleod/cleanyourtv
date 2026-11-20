@@ -2423,8 +2423,9 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.addRule(RelativeLayout.ALIGN_PARENT_END);
-        lp.addRule(RelativeLayout.ALIGN_BOTTOM, R.id.leftBlock);
-        lp.bottomMargin = ((ViewGroup.MarginLayoutParams) bar.getLayoutParams()).bottomMargin;
+        // From the top: the header grows to fit it, where aligning it to the clock's bottom cut off its last line
+        // once show_greeting is off and the clock block is shorter than the weather.
+        lp.addRule(RelativeLayout.ALIGN_PARENT_TOP);
         ((ViewGroup) bar.getParent()).addView(box, lp);
     }
 
