@@ -24,6 +24,20 @@ public class ContinueWatchingTest {
     }
 
     @Test
+    public void aRowRestampedWithoutBeingWatchedKeepsItsTime() {
+        // HBO Max's rewrite: same position, a new time. It keeps the time it had.
+        assertEquals(1_000, ContinueWatching.settled("600000\t1000", 600_000, 9_000));
+    }
+
+    @Test
+    public void aRowWatchedSinceTakesItsNewTime() {
+        assertEquals(9_000, ContinueWatching.settled("600000\t1000", 720_000, 9_000));   // the position moved
+        assertEquals(9_000, ContinueWatching.settled(null, 600_000, 9_000));               // never seen before
+        assertEquals(9_000, ContinueWatching.settled("garbage", 600_000, 9_000));
+        assertEquals(9_000, ContinueWatching.settled("600000\t0", 600_000, 9_000));        // nothing kept
+    }
+
+    @Test
     public void rowsOlderThanThirtyDaysAreDropped() {
         long day = 24L * 60 * 60 * 1000, now = 1000 * day;
         assertFalse(ContinueWatching.tooOld(now - 30 * day, now));

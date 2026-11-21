@@ -3,6 +3,7 @@ package com.gathin.tvhome;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -101,6 +102,8 @@ final class ContinueWatching {
         long now = System.currentTimeMillis();
         Map<String, Integer> perPackage = new TreeMap<>();
         boolean posterFetcher = hasPosterFetcher(context);
+        SharedPreferences seen = context.getSharedPreferences(SEEN_PREFS, Context.MODE_PRIVATE);
+        Map<String, String> seenNow = new HashMap<>();
         // No selection: a caller without ACCESS_ALL_EPG_DATA gets a SecurityException when it passes one.
         try (Cursor c = cr.query(TvContract.WatchNextPrograms.CONTENT_URI, COLUMNS, null, null, null)) {
             if (c == null) {
@@ -113,12 +116,15 @@ final class ContinueWatching {
                 perPackage.merge(pkg, 1, Integer::sum);
                 if (lng(c, TvContract.WatchNextPrograms.COLUMN_BROWSABLE, 1) == 0) continue;
                 long engaged = lng(c, TvContract.WatchNextPrograms.COLUMN_LAST_ENGAGEMENT_TIME_UTC_MILLIS, 0);
-                if (tooOld(engaged, now)) continue;
                 String title = str(c, TvContract.WatchNextPrograms.COLUMN_TITLE);
                 if (title == null || title.isEmpty()) continue;
                 if (pm.getLeanbackLaunchIntentForPackage(pkg) == null && pm.getLaunchIntentForPackage(pkg) == null) continue;
 
                 long pos = lng(c, TvContract.WatchNextPrograms.COLUMN_LAST_PLAYBACK_POSITION_MILLIS, 0);
+                String key = pkg + "\n" + title + "\n" + subtitle(c);
+                engaged = settled(seen.getString(key, null), pos, engaged);
+                seenNow.put(key, pos + "\t" + engaged);
+                if (tooOld(engaged, now)) continue;
                 long dur = lng(c, TvContract.WatchNextPrograms.COLUMN_DURATION_MILLIS, 0);
                 float progress = pos > 0 && dur > 0 ? (float) Math.min(1.0, (double) pos / dur) : -1f;
                 int type = (int) lng(c, TvContract.WatchNextPrograms.COLUMN_WATCH_NEXT_TYPE, -1);
@@ -136,11 +142,44 @@ final class ContinueWatching {
             Log.w(TAG, "Watch Next not readable: " + e);
             return new ArrayList<>();
         }
+        // Kept across reads where an app's rows are briefly gone (HBO Max mid-rewrite); dropped once past 30 days.
+        SharedPreferences.Editor edit = seen.edit();
+        for (Map.Entry<String, ?> e : seen.getAll().entrySet()) {
+            if (seenNow.containsKey(e.getKey())) continue;
+            long t = keptTime(String.valueOf(e.getValue()));
+            if (t <= 0 || tooOld(t, now)) edit.remove(e.getKey());
+        }
+        for (Map.Entry<String, String> e : seenNow.entrySet()) edit.putString(e.getKey(), e.getValue());
+        edit.apply();
         holdVanished(items, perPackage.keySet(), now);
         List<Item> shown = newestPerShow(items);
         Log.i(TAG, "Watch Next rows per app: " + perPackage + ", shown: " + shown.size() + (holding ? ", holding" : ""));
 
         return shown;
+    }
+
+    /** Each row's position and the engagement time kept for it, by package, title and episode line. */
+    private static final String SEEN_PREFS = "watch_next_seen";
+
+    /**
+     * The engagement time to sort by. HBO Max rewrites all its rows whenever one is watched, stamping each a minute
+     * apart from now, so a show not touched in days jumps ahead of what was watched an hour ago. A row whose
+     * position is the one seen last time was not watched since: it keeps the time it had then. stored is
+     * "position\ttime" from the last load, or null for a row not seen before.
+     */
+    static long settled(String stored, long position, long engaged) {
+        if (stored == null || !stored.startsWith(position + "\t")) return engaged;
+        long kept = keptTime(stored);
+        return kept > 0 ? kept : engaged;
+    }
+
+    /** The time half of a stored "position\ttime", or -1. */
+    static long keptTime(String stored) {
+        try {
+            return Long.parseLong(stored.substring(stored.indexOf('\t') + 1));
+        } catch (NumberFormatException e) {
+            return -1;
+        }
     }
 
     /** Older than MAX_AGE_MS (30 days). A row with no engagement time is kept: there is nothing to age it by. */
