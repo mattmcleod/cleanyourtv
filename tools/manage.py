@@ -591,7 +591,7 @@ def panel_extra_problem(text):
 # switch it left where it was, the dead `"glow_style": "off"` #3429 removed from two themes.
 ENUMS = {
     "glow_style": (("radial", "horizon"), "radial", True),
-    "glass_style": (("glass", "rim", "halo"), "glass", True),
+    "glass_style": (("glass", "rim", "halo", "ring"), "glass", True),
     "clock_format": (("12", "24", "system"), "system", True),
     "wallpaper_order": (("shuffle", "sequential"), "shuffle", False),
 }

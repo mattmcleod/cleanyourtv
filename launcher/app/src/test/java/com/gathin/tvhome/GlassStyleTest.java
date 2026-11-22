@@ -17,6 +17,7 @@ public class GlassStyleTest {
     public void haloByNameAnyCase() {
         assertEquals(Config.GLASS_HALO, Config.glassStyle("halo"));
         assertEquals(Config.GLASS_HALO, Config.glassStyle("HALO "));
+        assertEquals(Config.GLASS_RING, Config.glassStyle(" Ring"));
     }
 
     @Test
