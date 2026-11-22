@@ -19,6 +19,35 @@
   <a href="docs/PRESS.md"><img src="docs/card.jpg" alt="504 TV models · 138 brands · 31 languages · 572 KB launcher. Featured in TechCrunch, TechRadar, Tom's Guide, Mashable, Android Authority, XDA, FlatpanelsHD, It's FOSS, Phandroid, GIGAZINE, Xataka, WinFuture, Frandroid, Macitynet, Techaeris, TechPP and 530 more: 546 articles from 57 countries. Before: stock Google TV home with a sponsored ad. After: the Clean Your TV launcher. #1 trending repo of the week, Oct 19–25 2026, via trendshift.io." width="800"></a>
 </p>
 
+## About this fork
+
+This is [mattmcleod/cleanyourtv](https://github.com/mattmcleod/cleanyourtv), a fork of
+[Gathin23/cleanyourtv](https://github.com/Gathin23/cleanyourtv). Everything below is the upstream README and
+still applies.
+
+**Why a fork:** these features go past what the core project takes in a pull request. Continue watching needs a
+new launcher permission (`READ_TV_LISTINGS`), the posters and weather come from add-ons with network access, and
+together they take the launcher past the 576 KB size limit. Upstream's
+[contributing guide](CONTRIBUTING.md) sends changes like that to a repository of their own.
+
+**What's new**, all off by default and switched on in `launcher/app/src/main/res/values/config.xml`. Tested on a
+Sony BRAVIA X90L (Google TV 12):
+
+| Switch or add-on | What it does |
+|---|---|
+| `continue_watching` | A Continue watching row above the dock, from the TV's Watch Next list: the last 30 days, newest first, one card per show, each card the size of a dock tile. It is not fooled when HBO Max marks every show as just watched. |
+| [`addons/posters`](addons/posters/) | Real posters on those cards, fetched by the add-on so the launcher itself stays offline. |
+| `live_links` | A Live now row of coloured buttons that open live channels in their apps, for example ABC TV and ABC News24 in ABC iview, and SBS. |
+| `top_weather` + [`addons/bom-weather`](addons/bom-weather/) | Weather from the Australian Bureau of Meteorology in the top-right corner, in place of the Inputs, Wi-Fi and Settings buttons. |
+| `more_arrow` | The dock sits lower, the app rows under it stay hidden until you press Down, and a chevron shows there's more. |
+| `clock_centered` | AM/PM and the date centred on the clock's digits. |
+
+Screenshots of each are in [docs/switches.md](docs/switches.md).
+
+<p align="center">
+  <img src="docs/switches/continue_watching.jpg" width="640" alt="This fork's home screen: Continue watching, Live now and the dock">
+</p>
+
 ## Start here
 
 | You have | Go to |
