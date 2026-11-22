@@ -955,7 +955,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         btnLibraryTop.setOnKeyListener(pillKeys);
         for (View button : topAppButtons) button.setOnKeyListener(pillKeys);
         setUpTopWeather();
-        alignDateToAmPm();
+        centreOnClock();
         if (advancedEffects) {
             List<View> pills = new ArrayList<>(Arrays.asList(btnInputs, btnWifi, btnVpn, btnReorder, btnLibraryTop, btnSettings));
             pills.addAll(topAppButtons);
@@ -2390,20 +2390,33 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         }
     }
 
-    // ---- config.xml date_baseline -----------------------------------------------------------------
+    // ---- config.xml clock_centered -----------------------------------------------------------------
 
-    /** The date column moved so the date's baseline is the AM/PM's; off with date_below_clock, which moves it. */
-    private void alignDateToAmPm() {
-        if (!getResources().getBoolean(R.bool.date_baseline)) return;
-        TextView ampm = findViewById(R.id.ampm), date = findViewById(R.id.date);
-        View box = (View) date.getParent();
-        View.OnLayoutChangeListener align = (v, l, t, r, b, ol, ot, or, ob) -> {
-            if (box.getParent() != ampm.getParent() || ampm.getText().length() == 0) return;
-            float shift = ampm.getTop() + ampm.getBaseline() - (box.getTop() + date.getTop() + date.getBaseline());
-            if (box.getTranslationY() != shift) box.setTranslationY(shift);
+    /** AM/PM, the divider and the date centred on the clock's digits, rather than sitting on its baseline. */
+    private void centreOnClock() {
+        if (!getResources().getBoolean(R.bool.clock_centered)) return;
+        TextView clock = findViewById(R.id.clock), ampm = findViewById(R.id.ampm), date = findViewById(R.id.date);
+        View divider = findViewById(R.id.clockDivider), box = (View) date.getParent();
+        View.OnLayoutChangeListener centre = (v, l, t, r, b, ol, ot, or, ob) -> {
+            if (box.getParent() != clock.getParent()) return;   // date_below_clock: a row of its own
+            float mid = clock.getTop() + glyphMiddle(clock, "0");
+            shiftTo(ampm, mid - (ampm.getTop() + glyphMiddle(ampm, "H")));
+            shiftTo(divider, mid - (divider.getTop() + divider.getHeight() / 2f));
+            shiftTo(box, mid - (box.getTop() + date.getTop() + glyphMiddle(date, "H")));
         };
-        ampm.addOnLayoutChangeListener(align);
-        box.addOnLayoutChangeListener(align);
+        clock.addOnLayoutChangeListener(centre);
+        box.addOnLayoutChangeListener(centre);
+    }
+
+    /** From the view's top to the middle of the glyph's ink: what the eye takes as the text's centre. */
+    private static float glyphMiddle(TextView view, String glyph) {
+        Rect ink = new Rect();
+        view.getPaint().getTextBounds(glyph, 0, 1, ink);
+        return view.getBaseline() + ink.exactCenterY();   // ink.top is negative: above the baseline
+    }
+
+    private static void shiftTo(View view, float dy) {
+        if (view.getTranslationY() != dy) view.setTranslationY(dy);
     }
 
     // ---- Weather (config.xml top_weather) ---------------------------------------------------------

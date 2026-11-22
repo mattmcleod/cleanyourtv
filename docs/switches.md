@@ -75,11 +75,11 @@ rule sit on its wanted list until a screenshot arrives.
 | `live_links` | <img src="switches/live_links.jpg" width="320" alt="live_links on a TV: ABC TV, ABC News24 and SBS as coloured buttons above the dock"> |
 | `more_arrow` | <img src="switches/more_arrow.jpg" width="320" alt="more_arrow on a TV: the dock low on the screen with a down chevron under it"> |
 | `top_weather` | <img src="switches/top_weather.jpg" width="320" alt="top_weather on a TV: a storm icon, 20 degrees and 80% rain in the top-right corner"> |
-| `date_baseline` | <img src="switches/date_baseline.jpg" width="320" alt="date_baseline on a TV: the date on the same line as PM beside the clock"> |
+| `clock_centered` | <img src="switches/clock_centered.jpg" width="320" alt="clock_centered on a TV: PM and the date centred on the clock's digits"> |
 
 `icon_tiles` is a `config.xml` key rather than a theme key, as its type cell in the Keys table says: the
 launcher reads its package list from the built-in array (`AppAdapter.java` reads
 `R.array.icon_tiles`) and never from a theme, so a `config.json` that names it is ignored like any
 other unknown key. Write the list into `launcher/app/src/main/res/values/config.xml` before the build.
 Its row is here all the same, because the switch is on the TV either way. The same goes for
-`continue_watching`, `live_links`, `more_arrow`, `top_weather` and `date_baseline`.
+`continue_watching`, `live_links`, `more_arrow`, `top_weather` and `clock_centered`.
