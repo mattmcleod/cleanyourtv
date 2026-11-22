@@ -150,6 +150,8 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
     private FrameLayout root;
     private WallpaperPlayer wallpaperPlayer;
     private GlassView glass;
+    /** glass_style ring: the highlight jumps between tiles instead of springing. */
+    private boolean glassRing;
     private View ambient;
     private TextView heroName;
     /** The top shelf: heroName, plus the cinematic shelf's "Last opened" line and dock position dots. */
@@ -541,6 +543,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
         sky.setIntensity(cfg.skyIntensity);
         glass = findViewById(R.id.glass);
         glass.setStyle(cfg.glassStyle);
+        glassRing = Config.GLASS_RING.equals(cfg.glassStyle);
         if (festive) glass.setAccent(festival.accentColor());
         ambient = findViewById(R.id.ambient);
         // The glow is one bitmap, so its alpha can be applied while drawing it. Otherwise every frame of
@@ -1911,7 +1914,7 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             if (animations && !reducedMotion) glass.animate().alpha(1f).setDuration(180).start();
             else glass.setAlpha(1f);
             glassShown = true;
-        } else if (!animations) {
+        } else if (!animations || glassRing) {   // ring: it jumps to the new tile, as the cards' ring does
             springX.cancel();
             springY.cancel();
             glass.setTranslationX(x);
