@@ -41,6 +41,7 @@ Sony BRAVIA X90L (Google TV 12):
 | `top_weather` + [`addons/bom-weather`](addons/bom-weather/) | Weather from the Australian Bureau of Meteorology in the top-right corner, in place of the Inputs, Wi-Fi and Settings buttons. |
 | `more_arrow` | The dock sits lower, the app rows under it stay hidden until you press Down, and a chevron shows there's more. |
 | `clock_centered` | AM/PM and the date centred on the clock's digits. |
+| `glass_style` `ring` | A highlighted app gets the cards' plain white ring, which jumps between tiles, in place of the gliding glass highlight. |
 
 Screenshots of each are in [docs/switches.md](docs/switches.md).
 
