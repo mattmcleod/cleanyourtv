@@ -35,7 +35,7 @@ Sony BRAVIA X90L (Google TV 12):
 
 | Switch or add-on | What it does |
 |---|---|
-| `continue_watching` | A Continue watching row above the dock, from the TV's Watch Next list: the last 30 days, newest first, one card per show, each card the size of a dock tile. It is not fooled when HBO Max marks every show as just watched. |
+| `continue_watching` | A Continue watching row above the dock, from the TV's Watch Next list: the last 30 days, newest first, one card per show, each card the size of a dock tile, with the highlighted show and its season and episode above the cards. It is not fooled when HBO Max marks every show as just watched. |
 | [`addons/posters`](addons/posters/) | Real posters on those cards, fetched by the add-on so the launcher itself stays offline. |
 | `live_links` | A Live now row of coloured buttons that open live channels in their apps, for example ABC TV and ABC News24 in ABC iview, and SBS. |
 | `top_weather` + [`addons/bom-weather`](addons/bom-weather/) | Weather from the Australian Bureau of Meteorology in the top-right corner, in place of the Inputs, Wi-Fi and Settings buttons. |

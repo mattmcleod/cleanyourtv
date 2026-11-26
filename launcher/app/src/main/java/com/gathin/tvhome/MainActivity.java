@@ -2347,14 +2347,14 @@ public class MainActivity extends Activity implements AppAdapter.TileListener {
             View anchor = stats.getVisibility() == View.VISIBLE ? stats : findViewById(R.id.leftBlock);
             Rect a = new Rect(0, 0, anchor.getWidth(), anchor.getHeight());
             root.offsetDescendantRectToMyCoords(anchor, a);
-            float y = a.bottom + 8 * density;
+            float y = a.bottom + 20 * density;
             if (continueRow.getY() != y) continueRow.setY(y);
             Rect g = new Rect(0, 0, grid.getWidth(), grid.getHeight());
             root.offsetDescendantRectToMyCoords(grid, g);
             // The dock card's top, which showHero measures from: DockDecoration's 6dp and item_app.xml's 8dp padding.
             float dockTop = g.top + grid.getPaddingTop() + (6 + 8) * density;
             matchDockTiles();
-            float rowBottom = y + (13 + 6 + 12 + 12) * density + continueRow.cardHeightPx();
+            float rowBottom = y + (13 + ContinueRow.LABEL_H_DP + 12 + 12) * density + continueRow.cardHeightPx();
             float heroTop = liveRow != null && liveRow.hasItems() ? liveRowTop(dockTop)
                     : dockTop - 40 * density - hero.getHeight();
             continueRow.setFits(rowBottom <= heroTop);

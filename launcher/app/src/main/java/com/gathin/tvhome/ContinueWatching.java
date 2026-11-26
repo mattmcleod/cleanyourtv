@@ -54,6 +54,7 @@ final class ContinueWatching {
         final String posterUri;    // local, or the poster companion's; null: the app's banner
         final long engaged;
         Bitmap poster;             // filled in by loadPoster, off the main thread
+        String number = "";        // "S1 · E8", or "" for a film: the focused card's label line
 
         Item(String pkg, String title, String subtitle, String intentUri, float progress, String posterUri,
              long engaged) {
@@ -135,6 +136,7 @@ final class ContinueWatching {
                 Item item = new Item(pkg, title, subtitle(c), str(c, TvContract.WatchNextPrograms.COLUMN_INTENT_URI),
                         progress, posterUri(poster, posterFetcher), engaged);
                 item.poster = cached(item.posterUri);
+                item.number = number(c);
                 items.add(item);
             }
         } catch (Exception e) {
@@ -237,14 +239,21 @@ final class ContinueWatching {
 
     /** "S2 · E5 · Episode title", or whatever part of it the app filled in. */
     private static String subtitle(Cursor c) {
-        StringBuilder s = new StringBuilder();
-        String season = str(c, TvContract.WatchNextPrograms.COLUMN_SEASON_DISPLAY_NUMBER);
-        String episode = str(c, TvContract.WatchNextPrograms.COLUMN_EPISODE_DISPLAY_NUMBER);
+        String s = number(c);
         String name = str(c, TvContract.WatchNextPrograms.COLUMN_EPISODE_TITLE);
+        return name == null || name.isEmpty() ? s : s.isEmpty() ? name : s + " · " + name;
+    }
+
+    private static String number(Cursor c) {
+        return number(str(c, TvContract.WatchNextPrograms.COLUMN_SEASON_DISPLAY_NUMBER),
+                str(c, TvContract.WatchNextPrograms.COLUMN_EPISODE_DISPLAY_NUMBER));
+    }
+
+    /** "S1 · E8", "S1", "E8" or "". */
+    static String number(String season, String episode) {
+        StringBuilder s = new StringBuilder();
         if (isNumbered(season)) s.append('S').append(season);
         if (isNumbered(episode)) s.append(s.length() > 0 ? " · " : "").append('E').append(episode);
-        if (name != null && !name.isEmpty()) s.append(s.length() > 0 ? " · " : "").append(name);
-
         return s.toString();
     }
 

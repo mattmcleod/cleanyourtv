@@ -24,6 +24,13 @@ public class ContinueWatchingTest {
     }
 
     @Test
+    public void theLabelNumberIsSeasonAndEpisode() {
+        assertEquals("S1 · E8", ContinueWatching.number("1", "8"));
+        assertEquals("E8", ContinueWatching.number(null, "8"));
+        assertEquals("", ContinueWatching.number("0", "0"));   // Peacock's films
+    }
+
+    @Test
     public void aRowRestampedWithoutBeingWatchedKeepsItsTime() {
         // HBO Max's rewrite: same position, a new time. It keeps the time it had.
         assertEquals(1_000, ContinueWatching.settled("600000\t1000", 600_000, 9_000));

@@ -65,6 +65,9 @@ final class ContinueRow extends LinearLayout {
     private boolean fits = true;   // false: the screen has no room between the clock and the dock's title
 
     private final boolean chips;
+    private final TextView label;
+    /** The label line: its text size and the gap above it. LABEL_H_DP is the room it takes, for MainActivity's fit. */
+    static final int LABEL_SP = 30, LABEL_GAP_DP = 2, LABEL_H_DP = LABEL_GAP_DP + 36;   // 30sp without font padding
     /** setCardGeometry: the dock tiles' size and gap in px; 0 until the dock is laid out. */
     private int cardW, cardH, cardGap, cardsLeft;
 
@@ -88,6 +91,21 @@ final class ContinueRow extends LinearLayout {
         LayoutParams tlp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         tlp.setMarginStart(dp(12));
         addView(title, tlp);
+
+        // The focused card's show and episode (cards only). Always laid out, blank until a card has focus, so the
+        // cards don't move when focus arrives.
+        label = new TextView(context);
+        label.setSingleLine(true);
+        label.setIncludeFontPadding(false);
+        label.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, LABEL_SP);
+        label.setTextColor(Color.WHITE);
+        label.setTypeface(UiFont.get(context, R.string.font_medium));
+        LayoutParams llp = new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        llp.setMarginStart(dp(12));
+        llp.topMargin = dp(LABEL_GAP_DP);
+        if (chips) label.setVisibility(GONE);   // the buttons say their own names
+        addView(label, llp);
 
         scroller = new HorizontalScrollView(context) {
             // The stock version scrolls a card flush with the screen edge; keep it where the first card rests.
@@ -120,6 +138,21 @@ final class ContinueRow extends LinearLayout {
         addView(scroller, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
     }
 
+    /** "Silicon Valley  S1 · E8", the number dimmer; blank for null. */
+    private void showLabel(ContinueWatching.Item item) {
+        if (item == null) {
+            label.setText("");   // the next card's focus, which follows the old one's loss, sets it again
+            return;
+        }
+        android.text.SpannableStringBuilder s = new android.text.SpannableStringBuilder(item.title);
+        if (!item.number.isEmpty()) {
+            int start = s.length();
+            s.append("   ").append(item.number);
+            s.setSpan(new android.text.style.ForegroundColorSpan(0xB3FFFFFF), start, s.length(), 0);
+        }
+        label.setText(s);
+    }
+
     int cardHeightPx() {
         return cardH > 0 ? cardH : dp(CARD_H_DP);
     }
@@ -149,6 +182,9 @@ final class ContinueRow extends LinearLayout {
         LayoutParams tlp = (LayoutParams) title.getLayoutParams();
         tlp.setMarginStart(inset + dp(12));
         tlp.leftMargin = inset + dp(12);
+        LayoutParams llp = (LayoutParams) label.getLayoutParams();
+        llp.setMarginStart(inset + dp(12));
+        llp.leftMargin = inset + dp(12);
         post(title::requestLayout);   // a request made during a layout pass would be dropped
         scroller.setPadding(inset, 0, inset, 0);
     }
@@ -383,6 +419,7 @@ final class ContinueRow extends LinearLayout {
             else card.setForeground(focused ? ring : null);
             // A stray focus also lands here; strayFocus has already queued the move back to the dock, which puts
             // the glass and the title back.
+            if (!chips) showLabel(focused ? item : null);
             if (focused) {
                 lastIndex = index;
                 host.onRowFocused();
