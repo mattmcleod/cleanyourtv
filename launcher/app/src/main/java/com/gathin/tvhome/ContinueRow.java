@@ -441,9 +441,10 @@ final class ContinueRow extends LinearLayout {
                     return true;
                 case KeyEvent.KEYCODE_DPAD_LEFT:
                 case KeyEvent.KEYCODE_DPAD_RIGHT: {
-                    // Moved by hand: Android's own search would not leave a chip (live_links). At either end, stay put.
-                    int next = index + (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
-                    if (next >= 0 && next < cardViews.size()) {
+                    // Moved by hand: Android's own search would not leave a chip (live_links). The cards wrap from
+                    // one end to the other; the chips stay put at either end.
+                    int next = step(index, keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1, cardViews.size(), !chips);
+                    if (next != index) {
                         v.playSoundEffect(keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
                                 ? SoundEffectConstants.NAVIGATION_RIGHT : SoundEffectConstants.NAVIGATION_LEFT);
                         focusRequested = true;
@@ -455,6 +456,13 @@ final class ContinueRow extends LinearLayout {
                     return false;
             }
         });
+    }
+
+    /** The index Left or Right moves to from index: wrapping past either end, or staying put there. */
+    static int step(int index, int delta, int size, boolean wrap) {
+        int next = index + delta;
+        if (next >= 0 && next < size) return next;
+        return wrap ? Math.floorMod(next, size) : index;
     }
 
     private TextView label(String s, int sp, int color, int font) {

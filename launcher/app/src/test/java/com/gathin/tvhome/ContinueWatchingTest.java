@@ -100,4 +100,14 @@ public class ContinueWatchingTest {
         assertEquals(1, back.size());
         assertEquals("New", back.get(0).title);
     }
+
+    @Test
+    public void leftAndRightWrapOnCardsButStopOnChips() {
+        assertEquals(3, ContinueRow.step(0, -1, 4, true));   // left at the front: the end
+        assertEquals(0, ContinueRow.step(3, 1, 4, true));    // right at the end: the front
+        assertEquals(2, ContinueRow.step(1, 1, 4, true));
+        assertEquals(0, ContinueRow.step(0, -1, 4, false));  // chips stay put
+        assertEquals(3, ContinueRow.step(3, 1, 4, false));
+        assertEquals(0, ContinueRow.step(0, 1, 1, true));    // one card: nowhere to go
+    }
 }
